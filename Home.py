@@ -4,19 +4,19 @@ import numpy as np
 import pickle
 from sklearn.preprocessing import LabelEncoder
 
-# Configuração da página
+# Page configuration
 st.set_page_config(
-    page_title="HotelSmart - Predição de Cancelamentos",
+    page_title="HotelSmart - Cancellation Prediction",
     page_icon="🏨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Título principal
-st.title("🏨 HotelSmart - Sistema de Predição de Cancelamentos")
+# Main title
+st.title("🏨 HotelSmart - Cancellation Prediction System")
 st.markdown("---")
 
-# Carregando os modelos salvos
+# Loading saved models
 @st.cache_resource
 def load_models():
     try:
@@ -28,71 +28,71 @@ def load_models():
             label_encoder = pickle.load(f)
         return model, scaler, label_encoder
     except FileNotFoundError:
-        st.error("Modelos não encontrados! Certifique-se de que os arquivos .pkl estão no diretório correto.")
+        st.error("Models not found! Make sure the .pkl files are in the correct directory.")
         return None, None, None
 
 model, scaler, label_encoder = load_models()
 
 if model is not None:
-    # Sidebar para entrada de dados
-    st.sidebar.header("📊 Dados da Reserva")
-    
-    # Inputs do usuário
+    # Sidebar for data input
+    st.sidebar.header("📊 Reservation Data")
+
+    # User inputs
     lead_time = st.sidebar.number_input(
-        "Lead Time (dias de antecedência)", 
-        min_value=0, 
-        max_value=500, 
+        "Lead Time (days in advance)",
+        min_value=0,
+        max_value=500,
         value=30,
-        help="Número de dias entre a reserva e a chegada"
+        help="Number of days between booking and arrival"
     )
-    
+
     arrival_month = st.sidebar.selectbox(
-        "Mês de Chegada",
+        "Arrival Month",
         options=list(range(1, 13)),
         index=5,
-        help="Mês da chegada (1-12)"
+        help="Month of arrival (1-12)"
     )
-    
+
     arrival_date = st.sidebar.number_input(
-        "Data de Chegada (dia do mês)",
+        "Arrival Date (day of month)",
         min_value=1,
         max_value=31,
         value=15,
-        help="Dia do mês da chegada"
+        help="Day of the month of arrival"
     )
-    
+
     market_segment_type = st.sidebar.selectbox(
-        "Tipo de Segmento de Mercado",
+        "Market Segment Type",
         options=["Aviation", "Complementary", "Corporate", "Online", "Offline"],
         index=3,
-        help="Segmento de mercado da reserva"
+        help="Booking market segment"
     )
-    
+
     avg_price_per_room = st.sidebar.number_input(
-        "Preço Médio por Quarto (R$)",
+        "Average Price per Room ($)",
         min_value=0.0,
         max_value=10000.0,
         value=150.0,
         step=10.0,
-        help="Preço médio por quarto em reais"
+        help="Average price per room in dollars"
     )
-    
+
     no_of_special_requests = st.sidebar.number_input(
-        "Número de Pedidos Especiais",
+        "Number of Special Requests",
         min_value=0,
         max_value=10,
         value=1,
-        help="Quantidade de pedidos especiais feitos pelo hóspede"
+        help="Number of special requests made by the guest"
     )
-    
-    # Botão de predição
-    if st.sidebar.button("🔮 Fazer Predição", type="primary"):
-        # Preparar os dados para predição
+
+    # Prediction button
+    if st.sidebar.button("🔮 Make Prediction", type="primary"):
+        # Prepare data for prediction
         try:
-            # Codificar o market_segment_type
+            # Encode market_segment_type
             market_segment_encoded = label_encoder.transform([[market_segment_type]])[0][0]
-            
-            # Criar DataFrame com os dados de entrada
+
+            # Create DataFrame with input data
             input_data = pd.DataFrame({
                 'lead_time': [lead_time],
                 'arrival_month': [arrival_month],
@@ -101,108 +101,108 @@ if model is not None:
                 'avg_price_per_room': [avg_price_per_room],
                 'no_of_special_requests': [no_of_special_requests]
             })
-            
-            # Fazer a predição
+
+            # Make prediction
             prediction = model.predict(input_data)[0]
             prediction_proba = model.predict_proba(input_data)[0]
-            
-            # Exibir resultados
+
+            # Display results
             col1, col2 = st.columns(2)
-            
+
             with col1:
-                st.subheader("📈 Resultado da Predição")
+                st.subheader("📈 Prediction Result")
                 if prediction == 1:
-                    st.error("⚠️ **ALTA PROBABILIDADE DE CANCELAMENTO**")
-                    st.markdown(f"**Probabilidade de Cancelamento:** {prediction_proba[1]:.2%}")
+                    st.error("⚠️ **HIGH CANCELLATION PROBABILITY**")
+                    st.markdown(f"**Cancellation Probability:** {prediction_proba[1]:.2%}")
                 else:
-                    st.success("✅ **BAIXA PROBABILIDADE DE CANCELAMENTO**")
-                    st.markdown(f"**Probabilidade de Manutenção:** {prediction_proba[0]:.2%}")
-            
+                    st.success("✅ **LOW CANCELLATION PROBABILITY**")
+                    st.markdown(f"**Retention Probability:** {prediction_proba[0]:.2%}")
+
             with col2:
-                st.subheader("📊 Probabilidades")
+                st.subheader("📊 Probabilities")
                 prob_df = pd.DataFrame({
-                    'Status': ['Não Cancelar', 'Cancelar'],
-                    'Probabilidade': [prediction_proba[0], prediction_proba[1]]
+                    'Status': ['No Cancellation', 'Cancellation'],
+                    'Probability': [prediction_proba[0], prediction_proba[1]]
                 })
                 st.bar_chart(prob_df.set_index('Status'))
             
-            # Informações adicionais
+            # Additional information
             st.markdown("---")
-            st.subheader("💡 Recomendações")
-            
+            st.subheader("💡 Recommendations")
+
             if prediction == 1:
                 st.warning("""
-                **Ações Recomendadas para Reduzir o Risco de Cancelamento:**
-                - Entrar em contato com o cliente para confirmar a reserva
-                - Oferecer flexibilidade nas datas ou condições
-                - Verificar se há necessidades especiais não atendidas
-                - Considerar ofertas ou upgrades para fidelizar o cliente
+                **Recommended Actions to Reduce Cancellation Risk:**
+                - Contact the customer to confirm the reservation
+                - Offer flexibility in dates or conditions
+                - Check if there are unmet special needs
+                - Consider offers or upgrades to retain the customer
                 """)
             else:
                 st.info("""
-                **Reserva com Baixo Risco de Cancelamento:**
-                - Cliente provavelmente manterá a reserva
-                - Foque em proporcionar uma excelente experiência
-                - Prepare-se adequadamente para a chegada do hóspede
+                **Reservation with Low Cancellation Risk:**
+                - Customer will likely maintain the reservation
+                - Focus on providing an excellent experience
+                - Prepare adequately for the guest's arrival
                 """)
             
-            # Detalhes da análise
-            with st.expander("🔍 Detalhes da Análise"):
-                st.write("**Dados de Entrada:**")
+            # Analysis details
+            with st.expander("🔍 Analysis Details"):
+                st.write("**Input Data:**")
                 st.json({
-                    "Lead Time": f"{lead_time} dias",
-                    "Mês de Chegada": arrival_month,
-                    "Data de Chegada": arrival_date,
-                    "Segmento de Mercado": market_segment_type,
-                    "Preço Médio por Quarto": f"R$ {avg_price_per_room:.2f}",
-                    "Pedidos Especiais": no_of_special_requests
+                    "Lead Time": f"{lead_time} days",
+                    "Arrival Month": arrival_month,
+                    "Arrival Date": arrival_date,
+                    "Market Segment": market_segment_type,
+                    "Average Price per Room": f"$ {avg_price_per_room:.2f}",
+                    "Special Requests": no_of_special_requests
                 })
-                
-                st.write("**Fatores de Influência:**")
+
+                st.write("**Influencing Factors:**")
                 st.markdown("""
-                - **Lead Time**: Reservas com muito tempo de antecedência tendem a ter maior risco de cancelamento
-                - **Preço**: Preços mais altos podem influenciar na decisão de cancelamento
-                - **Pedidos Especiais**: Clientes com pedidos especiais tendem a cancelar menos
-                - **Segmento de Mercado**: Diferentes segmentos têm comportamentos distintos
+                - **Lead Time**: Bookings made far in advance tend to have higher cancellation risk
+                - **Price**: Higher prices may influence cancellation decisions
+                - **Special Requests**: Customers with special requests tend to cancel less
+                - **Market Segment**: Different segments have distinct behaviors
                 """)
         
         except Exception as e:
-            st.error(f"Erro ao fazer a predição: {str(e)}")
-    
-    # Informações sobre o modelo
+            st.error(f"Error making prediction: {str(e)}")
+
+    # Model information
     st.markdown("---")
-    st.subheader("ℹ️ Sobre o Modelo")
-    
+    st.subheader("ℹ️ About the Model")
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
-        st.metric("Algoritmo", "Random Forest")
-    
+        st.metric("Algorithm", "Random Forest")
+
     with col2:
-        st.metric("Features Utilizadas", "6")
-    
+        st.metric("Features Used", "6")
+
     with col3:
-        st.metric("Acurácia Estimada", "~85%")
+        st.metric("Estimated Accuracy", "~85%")
     
-    with st.expander("📋 Informações Técnicas"):
+    with st.expander("📋 Technical Information"):
         st.markdown("""
-        **Características do Modelo:**
-        - **Algoritmo**: Random Forest Classifier
+        **Model Characteristics:**
+        - **Algorithm**: Random Forest Classifier
         - **Features**: lead_time, arrival_month, arrival_date, market_segment_type, avg_price_per_room, no_of_special_requests
-        - **Pré-processamento**: StandardScaler para variáveis numéricas, LabelEncoder para variáveis categóricas
-        - **Seleção de Features**: Baseada no algoritmo Boruta
-        
-        **Como Usar:**
-        1. Preencha os dados da reserva na barra lateral
-        2. Clique em "Fazer Predição"
-        3. Analise o resultado e as recomendações
-        4. Tome ações preventivas se necessário
+        - **Preprocessing**: StandardScaler for numeric variables, LabelEncoder for categorical variables
+        - **Feature Selection**: Based on the Boruta algorithm
+
+        **How to Use:**
+        1. Fill in the reservation data in the sidebar
+        2. Click "Make Prediction"
+        3. Analyze the result and recommendations
+        4. Take preventive actions if necessary
         """)
 
 else:
-    st.error("⚠️ Não foi possível carregar os modelos. Verifique se os arquivos estão no diretório correto.")
+    st.error("⚠️ Could not load the models. Check if the files are in the correct directory.")
     st.info("""
-    **Arquivos necessários:**
+    **Required files:**
     - model/final_model.pkl
     - parameter/hotelsmart_scaler.pkl
     - parameter/market_segment_type_encoder.pkl
@@ -213,8 +213,8 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center'>
-        <p>🏨 HotelSmart - Sistema de Predição de Cancelamentos | Desenvolvido com Streamlit</p>
+        <p>🏨 HotelSmart - Cancellation Prediction System | Developed with Streamlit</p>
     </div>
-    """, 
+    """,
     unsafe_allow_html=True
 )
